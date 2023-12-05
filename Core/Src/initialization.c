@@ -1,11 +1,6 @@
 #include "initialization.h"
 
-void system_clock_configuration(void);
-void gpio_initialization(void);
-void dma_initialization(void);
-void adc_initialization(void);
-void timers_initialization(void);
-void watchdog_initialization(void);
+extern __IO uint32_t ms_factor;
 
 
 extern uint16_t adc_data[0x06];
@@ -51,7 +46,7 @@ void adc_initialization(void)
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
 	LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
 	/**ADC GPIO Configuration
-	PA0-CK_IN   ------> ADC_IN0
+	PA0-CK_IN   ------> ADC_IN0 /
 	PA1   ------> ADC_IN1
 	PA4   ------> ADC_IN4
 	PA7   ------> ADC_IN7
@@ -91,7 +86,7 @@ void adc_initialization(void)
 	LL_ADC_REG_SetSequencerChAdd(ADC1, LL_ADC_CHANNEL_TEMPSENSOR);
 	LL_ADC_SetCommonPathInternalCh(__LL_ADC_COMMON_INSTANCE(ADC1), LL_ADC_PATH_INTERNAL_TEMPSENSOR);
 
-	ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_EXT_TIM21_CH2;
+	ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_SOFTWARE;
 	ADC_REG_InitStruct.SequencerDiscont = LL_ADC_REG_SEQ_DISCONT_1RANK;
 	ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_SINGLE;
 	ADC_REG_InitStruct.DMATransfer = LL_ADC_REG_DMA_TRANSFER_UNLIMITED;
@@ -115,11 +110,14 @@ void adc_initialization(void)
 	while(wait_loop_index != 0)	{
 		wait_loop_index--;
 	}
+	LL_ADC_Enable(ADC1);
 }
 
 void timers_initialization(void)
 {
-	/*	timer 2: 50 kHz frequency initialization	*/
+	/*	timer 2: 50 kHz frequency initializatio
+	 *	pwm duty cycle:	50%
+	 * */
 	LL_TIM_InitTypeDef TIM_InitStruct = {0};
 	LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
 	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -151,18 +149,32 @@ void timers_initialization(void)
 	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
 	GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
 	LL_GPIO_Init(PWM_MCU_GPIO_PORT, &GPIO_InitStruct);
+	LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH3);
+	LL_TIM_EnableCounter(TIM2);
 
-	/*	timer 21: 1 Hz frequency  initialization	*/
-	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_TIM21);
-	TIM_InitStruct.Prescaler = 64e3;
-    TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-    TIM_InitStruct.Autoreload = 500;
-    TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
-    LL_TIM_Init(TIM21, &TIM_InitStruct);
-    LL_TIM_DisableARRPreload(TIM21);
-    LL_TIM_SetClockSource(TIM21, LL_TIM_CLOCKSOURCE_INTERNAL);
-    LL_TIM_SetTriggerOutput(TIM21, LL_TIM_TRGO_OC2REF);
-    LL_TIM_DisableMasterSlaveMode(TIM21);
+//	/*	timer 21: 1 Hz frequency  initialization	*/
+//	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_TIM21);
+//	TIM_InitStruct.Prescaler = 64e3;
+//    TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+//    TIM_InitStruct.Autoreload = 500;
+//    TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
+//    LL_TIM_Init(TIM21, &TIM_InitStruct);
+//    LL_TIM_DisableARRPreload(TIM21);
+//    LL_TIM_SetClockSource(TIM21, LL_TIM_CLOCKSOURCE_INTERNAL);
+//    LL_TIM_SetTriggerOutput(TIM21, LL_TIM_TRGO_OC2REF);
+//    LL_TIM_DisableMasterSlaveMode(TIM21);
+//    TIM21 -> DIER |= LL_TIM_DIER_TIE;
+//    NVIC_SetPriority(TIM21_IRQn, 0x0F);
+//   	NVIC_EnableIRQ(TIM21_IRQn);
+//    LL_TIM_EnableCounter(TIM21);
+}
+
+void systick_initialization(void)
+{
+	LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK_DIV8);
+  uint32_t us_factor = SystemCoreClock / (8000000U);
+  ms_factor = us_factor * (1000U);
+//  LL_SYSTICK_EnableIT();
 }
 
 void dma_initialization(void)

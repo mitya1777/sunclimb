@@ -1,6 +1,8 @@
 #include "interrupts.h"
-#include "main.h"
 
+
+
+extern uint32_t system_flag;
 
 void DMA1_Channel1_IRQHandler(void)
 {
@@ -9,6 +11,13 @@ void DMA1_Channel1_IRQHandler(void)
 
 }
 
+voidTIM21_IRQHandler(void)
+{
+	if(TIM21 -> SR & TIM_SR_UIF)	{
+		TIM21 -> SR &= ~TIM_SR_UIF;
+		system_flag |= _SYS_TIMER21_OVERFLOW;
+	}
+}
 
 
 void NMI_Handler(void)
